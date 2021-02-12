@@ -48,6 +48,10 @@ def toDict(self, archive, colunas):
                 date = "-".join(date)
             else:
                 date = date.replace("/","-") 
+            if '.' in time:
+                x = str.index(time, '.')
+                time = time[:x]
+                
             timedate = datetime.fromisoformat(date + ' ' + time)
 
         except ValueError:
