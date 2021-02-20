@@ -1,22 +1,25 @@
 # Arquivo da Interface GUI do programa.
-# Python 3.7.7
+# Python 3.9.1
 
-from PySide2.QtGui import (QIcon)
-from PySide2.QtCore import (QUrl, QObject)
-from PySide2.QtWidgets import (QMainWindow, QApplication, QLineEdit, QVBoxLayout, QWidget, QHBoxLayout,
+from PySide6.QtGui import (QIcon)
+from PySide6.QtCore import (QUrl, QObject)
+from PySide6.QtWidgets import (QMainWindow, QApplication, QLineEdit, QVBoxLayout, QWidget, QHBoxLayout,
 QBoxLayout, QPushButton, QGridLayout, QRadioButton, QGroupBox, QLabel, QTableWidget, QComboBox, QFileDialog,
 QTableWidgetItem, QProgressDialog, QMessageBox, QCheckBox, QDialog, QInputDialog)
-import classes.Generator as Ac
-import classes.functions as Fc
+import classes.utils as utils
+import classes.data as dt
 import sys, csv, time, os, ctypes
+import pandas as pd
+import numpy as np
 
 class MainWindow(QMainWindow):
 
     def __init__(self):
         QMainWindow.__init__(self)
         # Variaveis
-        self.Gerador = Ac.Acumulados([60, 60*4, 60*24, 60*48, 60*96])
-        self.separador = ";"
+        self.separador = ";" # Separador padrao de colunas em um arquivo txt ou csv
+        self.selected = np.array([1, 24, 48, 96]).astype('timedelta64[h]') # Intervalos selecionados ao iniciar o programa, modificavel.
+        self.fileformat =  '' # Reservado para o formato do arquivo a ser aberto. Pode ser .xlsx ou .odf. ou .csv e assim vai.  
 
         #Janela Principal
         widget = QWidget()
@@ -39,11 +42,11 @@ class MainWindow(QMainWindow):
         text3 = QPushButton("Configurar Intervalos")
         text2 = QLabel("Formato da Data")
         self.FormatoData = QComboBox()
-        self.FormatoData.addItems(["DD/MM/AAAA",'AAAA/MM/DD'])
+        self.FormatoData.addItems(["DD/MM/AAAA",'AAAA/MM/DD', "AAAA-MM-DD", "DD-MM-AAAA"])
         checkGroup = QGroupBox("Mais opções")
 
         text = QLabel("Por favor, selecione na tabela abaixo as colunas a utilizar:")
-        self.ignore = QRadioButton("Ignorar Primeira Linha do Arquivo")
+        self.ignore = QRadioButton("Possui Cabeçalho") # True se estiver selecionado, False caso nao
 
         self.Tabela = QTableWidget(15,15)
         self.startTable()
@@ -101,51 +104,37 @@ class MainWindow(QMainWindow):
         self.delimitador1.clicked.connect(self.updateDelimiter)
         self.delimitador2.clicked.connect(self.updateDelimiter)
         self.delimitador3.clicked.connect(self.updateDelimiter)
-        self.ignore.clicked.connect(self.updateIgnoreButton)
         Ajuda.clicked.connect(self.help)
         Processar.clicked.connect(self.taskStart)
         text3.clicked.connect(self.openSubWindow)
 
         # Propriedades da janela principal
-        myappid = 'GePlu.release1_03' # arbitrary string
+        height = 480
+        width = 640
+        myappid = 'GePlu.release1_04' # arbitrary string
         ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
-        self.setWindowIcon(QIcon('icon6.ico'))
-        self.setFixedSize(640,480)
+        self.setWindowIcon(QIcon(r'images\icon6.ico'))
+        self.setFixedSize(width, height)
         self.setWindowTitle("GePlu")
 
     def openSubWindow(self):
 
-        dialog = MyDialog(self.Gerador)
+        dialog = MyDialog(self)
         dialog.show()
         dialog.exec_()
 
     def taskStart(self):
         ''' Inicia a execucao do programa, se houver algum erro durante o processo
-        notifica o usuario e deixa a funcao imediatamente, devido a isso eu escrevi dois linhas
-        para garantir que os dados no objeto Gerador estejam resetados e o objeto esteja pronto para
-        a proxima interacao'''
-        if self.folder.isModified() and self.path.isModified(): # o usuario entrou com os caminhos (paths)?
-            # Garante que os dados são novos, ou seja, reseta se ja houve uma interacao antes.
-            self.Gerador.setData({})
-            self.Gerador.setDataHeight({},False)
-            # Verifica os nomes das colunas na tabela do programa e armazena em uma variavel
-            colunas = {}
-            for col in range(self.Tabela.columnCount()):
-                colunas[self.Tabela.cellWidget(0,col).currentText()] = col
-            # Comeca a cronometrar
-            start = time.time()
-            # Abre o arquivo e armazena em uma variavel
-            rawText = Fc.openFile(self)
-            # Pega o arquivo e converte os dados de data/hora em datetime, e valores de registro (ultima chuva) em floats, se possivel.
-            # Depois coloca o resultado dentro do objeto Gerador
-            Fc.toDict(self, rawText, colunas)
-            rawText = None
-            # Calcula todos os acumulados em x,y,z horas (especificado pelo usuario) de todos os horarios
-            self.Gerador.calcularAcumulado(self)
-            # Poe o resultado em uma matriz e retorna ela
-            Result = self.Gerador.getChart()
-            # Abre um novo arquivo csv e escreve os dados da matriz nesse arquivo, por fim salva.
-            Fc.saveFile(self, Result)
+        notifica o usuario e deixa a funcao imediatamente'''
+        if self.folder.isModified() and self.path.isModified(): # o usuario entrou com os enderecos?
+
+            # Conhece do que se trata cada coluna na tabela e armazena essa informacao.
+            header = {}
+            for col in range(15):
+                header[self.Tabela.cellWidget(0, col).currentText] = col
+
+
+
             # Fim do processo
             end = time.time()
             # Notifica o usuario
@@ -168,58 +157,44 @@ class MainWindow(QMainWindow):
         self.folder.setModified(False)
         self.folder.setModified(False)
 
-    def updateIgnoreButton(self):
-        if self.path.isModified():
-            self.updateTable()
-
     def updateDelimiter(self):
         separadores = {"Ponto-Vírgula": ';', "Vírgula":",","Ponto":"."}
         for x in [self.delimitador1, self.delimitador3, self.delimitador2]:
             if x.isChecked():
                 self.separador = separadores[x.text()]
                 break
+
         if self.path.isModified():
             self.updateTable()
 
     def startTable(self):
         for col in range(self.Tabela.columnCount()):
             combo = QComboBox()
-            combo.addItems(["Selecionar","Data & Hora","Chuva Medida","Data","Hora","Nível do Rio","Ignorar"])
+            combo.addItems(["Selecionar","Data & Hora","Chuva Medida","Data","Hora","Nível do Rio"])
             self.Tabela.setCellWidget(0, col, combo)
 
     def updateTable(self):
+        # Guarda a primeira linha
         textos = [0]*15
-        for col in range(15):
-            textos[col] = self.Tabela.cellWidget(0, col).currentText()
+        for col in range(15): textos[col] = self.Tabela.cellWidget(0, col).currentText()
 
         self.Tabela.clearContents()
         self.startTable()
 
-        for col in range(15):
-            self.Tabela.cellWidget(0, col).setCurrentText(textos[col])
+        for col in range(15): self.Tabela.cellWidget(0, col).setCurrentText(textos[col])
 
-        resultado = self.ignore.isChecked()
-        try:
-            with open(self.path.text(), newline = '') as csvfile:
-                file = csv.reader(csvfile, delimiter = self.separador)
-                n = 0
-                for row in file:
-                    if n == 0 and resultado:
-                        resultado = False
-                        continue
-                    for col in range(len(row)):
-                        if col < self.Tabela.columnCount():
-                            self.Tabela.setItem(n + 1, col, QTableWidgetItem(row[col]))
-                    n += 1
-                    if n == 14:
-                        break
-        except FileNotFoundError as Err:
-            x = QMessageBox(QMessageBox.Critical, "Erro de Acesso",  "Não foi possível abrir o arquivo selecionado.", parent = self)
-            x.addButton(QMessageBox.Ok)
-            x.setInformativeText("Não existe tal arquivo ou diretório.")
-            x.setDetailedText(str(Err))
-            x.exec()
-            raise PermissionError
+        # Mostra na tabela as primeiras 14 linhas do arquivo que o usuario deseja abrir/utilizar.
+        if self.fileformat == ".xlsx":
+            data_df = utils.open_excel(self, 14).to_numpy()
+
+        #elif self.filefomart == ".odf":
+            #data_df = utils.open_odf(self, 14).to_numpy()
+        else:
+            data_df = utils.open_csv(self, 14).to_numpy()
+
+        for row in range(data_df.shape[0]):
+            for col in range(data_df.shape[1]):
+                self.Tabela.setItem(row+1, col, QTableWidgetItem(data_df[row][col]))
 
 
     def searchFile(self):
@@ -227,6 +202,7 @@ class MainWindow(QMainWindow):
         if len(address) > 0:
             self.path.setText(address)
             self.path.setModified(True)
+            self.fileformat = address[address.index('.'):]
             self.updateTable()
 
     def getNewFile(self):
@@ -237,55 +213,63 @@ class MainWindow(QMainWindow):
 
 class MyDialog(QDialog):
 
-    def __init__(self, gerador):
+    def __init__(self, parent):
         QDialog.__init__(self)
         self.setWindowTitle("Configuração")
-        self.setFixedSize(200,200)
-        self.setWindowIcon(QIcon('icon6.ico'))
+        self.setFixedSize(200, 200)
+        self.setWindowIcon(QIcon(r'images\icon6.ico'))
         self.setModal(True)
-        self.intervalos = [60, 60*2, 60*3, 60*4, 60*12, 60*24, 60*48, 60*72, 60*96, 60*24*30]
+
+        horarios = ("1 Hora","2 Horas", "3 Horas", "4 Horas","12 Horas",
+         "24 Horas", "48 Horas", "72 horas", "96 horas", "30 Dias")
+        self.intervalos = np.array([1, 2, 3, 4, 12, 24, 48, 72, 96, 24*30]).astype('timedelta64[h]') # Intervalos Possiveis.
+        num_elementos = self.intervalos.shape[0]
 
         button1 = QPushButton("Cancelar")
         button1.clicked.connect(self.closeDialog)
         button2 = QPushButton("Confirmar")
-        button2.clicked.connect(lambda: self.saveAndClose(gerador))
+        button2.clicked.connect(lambda: self.saveAndClose(parent))
 
-        horarios = ["1 Hora","2 Horas", "3 Horas", "4 Horas","12 Horas",
-         "24 Horas", "48 Horas", "72 horas", "96 horas", "30 Dias"]
-        self.checkboxes = [0]*10
-        for i in range(10):
+        self.checkboxes = [0]*num_elementos
+        for i in range(num_elementos):
             self.checkboxes[i] = QCheckBox(horarios[i])
 
+        # Organizando o layout
         grupo = QGroupBox("Incluir Precipitação Acumulada Em")
         grid = QGridLayout()
-        for x in range(10):
-            if x < 5:
+        for x in range(num_elementos):
+            if x < num_elementos/2:
                 grid.addWidget(self.checkboxes[x], x , 0)
             else:
-                grid.addWidget(self.checkboxes[x], x - 5, 1)
+                grid.addWidget(self.checkboxes[x], x - num_elementos/2, 1)
+        #
         grupo.setLayout(grid)
-        self.startCheckboxes(gerador)
-
+        self.startCheckboxes(parent)
+        #
         sublayout = QHBoxLayout()
         sublayout.addWidget(button1)
         sublayout.addWidget(button2)
-
+        #
         layout = QVBoxLayout()
         layout.addWidget(grupo)
         layout.addLayout(sublayout)
         self.setLayout(layout)
 
-    def startCheckboxes(self, gerador):
-        for x in range(10):
-            self.checkboxes[x].setChecked(self.intervalos[x] in gerador.getValues())
+    def startCheckboxes(self, parent):
+        ''' Marcas as checkboxes cujos valores ja foram selecionados previamente'''
+        n = self.intervalos.shape[0]
+        for x in range(n):
+            self.checkboxes[x].setChecked(self.intervalos[x] in parent.selected) 
 
-    def saveAndClose(self, gerador):
+    def saveAndClose(self, parent):
+        ''' Salva as modificacoes, colocando as checkboxes selecionadas dentro do array self.selected, e fecha a janela'''
+        n = self.intervalos.shape[0]
         connections = []
-        for x in range(10):
+        for x in range(n):
             if self.checkboxes[x].isChecked():
                 connections.append(self.intervalos[x])
 
-        gerador.setValues(connections)
+        parent.selected = np.array(connections).astype('timedelta64[h]')
         self.close()
 
     def closeDialog(self):
