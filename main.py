@@ -134,7 +134,6 @@ class MainWindow(QMainWindow):
                 header[self.Tabela.cellWidget(0, col).currentText] = col
 
 
-
             # Fim do processo
             end = time.time()
             # Notifica o usuario
@@ -170,28 +169,22 @@ class MainWindow(QMainWindow):
     def startTable(self):
         for col in range(self.Tabela.columnCount()):
             combo = QComboBox()
-            combo.addItems(["Selecionar","Data & Hora","Chuva Medida","Data","Hora","Nível do Rio"])
+            combo.addItems(["Selecionar","Data & Hora","Prec. Observada","Data","Hora","Nível do Rio"])
             self.Tabela.setCellWidget(0, col, combo)
 
     def updateTable(self):
         # Guarda a primeira linha
-        textos = [0]*15
-        for col in range(15): textos[col] = self.Tabela.cellWidget(0, col).currentText()
+        n_col = self.Tabela.columnCount()
+        textos = [0]*n_col
+        for col in range(n_col): textos[col] = self.Tabela.cellWidget(0, col).currentText()
 
         self.Tabela.clearContents()
         self.startTable()
 
-        for col in range(15): self.Tabela.cellWidget(0, col).setCurrentText(textos[col])
+        for col in range(n_col): self.Tabela.cellWidget(0, col).setCurrentText(textos[col])
 
         # Mostra na tabela as primeiras 14 linhas do arquivo que o usuario deseja abrir/utilizar.
-        if self.fileformat == ".xlsx":
-            data_df = utils.open_excel(self, 14).to_numpy()
-
-        #elif self.filefomart == ".odf":
-            #data_df = utils.open_odf(self, 14).to_numpy()
-        else:
-            data_df = utils.open_csv(self, 14).to_numpy()
-
+        data_df = utils.read_file(self, 14).to_numpy()
         for row in range(data_df.shape[0]):
             for col in range(data_df.shape[1]):
                 self.Tabela.setItem(row+1, col, QTableWidgetItem(data_df[row][col]))
