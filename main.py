@@ -32,7 +32,7 @@ class MainWindow(QMainWindow):
         self.linkdata = dict([(self.datastring[x], self.dataformat[x]) for x in range(len(self.dataformat))])
 
         self.timestring = ["hh:mm", "hh:mm:ss", "hh:mm:ss.ms"]
-        self.timeformat = ["%H:%M", "%H:%M:%s", "%H:%M:%s.%f"]
+        self.timeformat = ["%H:%M", "%H:%M:%S", "%H:%M:%S.%f"]
         self.linktime = dict([(self.timestring[x], self.timeformat[x]) for x in range(len(self.timeformat))])
 
         #Janela Principal
