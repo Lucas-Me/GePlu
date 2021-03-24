@@ -86,7 +86,7 @@ def compute(datearr, floatarr, timedelta):
 	results = np.zeros(datearr.shape)
 	for n in range(datearr.shape[0]):
 		boolarr = datearr[last:n + 1] > (datearr[n] - timedelta)
-		results[n] = np.dot(boolarr, floatarr[last:n + 1])
+		results[n] = np.nansum(boolarr * floatarr[last:n + 1])
 		last = n - np.count_nonzero(boolarr) + 1
 
 	return results
