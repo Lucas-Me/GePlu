@@ -266,7 +266,7 @@ class MyDialog(QDialog):
             self.checkboxes[i] = QCheckBox(master.timedeltastr[i])
 
         # Organizando o layout
-        grupo = QGroupBox("Incluir Precipitação Acumulada Em")
+        grupo = QGroupBox("Precipitação Acumulada em")
         grid = QGridLayout()
         for x in range(num_elementos):
             if x < num_elementos/2:
