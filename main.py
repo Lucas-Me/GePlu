@@ -2,13 +2,12 @@
 # Python 3.9.1
 
 from PySide6.QtGui import (QIcon)
-from PySide6.QtCore import (QUrl, QObject)
 from PySide6.QtWidgets import (QMainWindow, QApplication, QLineEdit, QVBoxLayout, QWidget, QHBoxLayout,
-QBoxLayout, QPushButton, QGridLayout, QRadioButton, QGroupBox, QLabel, QTableWidget, QComboBox, QFileDialog,
-QTableWidgetItem, QProgressDialog, QMessageBox, QCheckBox, QDialog, QInputDialog)
+QPushButton, QGridLayout, QRadioButton, QGroupBox, QLabel, QTableWidget, QComboBox, QFileDialog,
+QTableWidgetItem, QMessageBox, QCheckBox, QDialog)
 import classes.utils as utils
 import classes.data as dt
-import sys, csv, time, os, ctypes
+import sys, time, ctypes, os
 import pandas as pd
 import numpy as np
 
@@ -134,8 +133,9 @@ class MainWindow(QMainWindow):
         height = 480
         width = 640
         myappid = 'GePlu.release1_0.0' # arbitrary string
+        current_dir = os.path.dirname(os.path.realpath(__file__))
         ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
-        self.setWindowIcon(QIcon(r'images\icon6.ico'))
+        self.setWindowIcon(QIcon(os.path.join(current_dir, "images", "icon6.ico")))
         self.setFixedSize(width, height)
         self.setWindowTitle("GePlu")
 
